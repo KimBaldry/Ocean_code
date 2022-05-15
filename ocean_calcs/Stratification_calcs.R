@@ -1,0 +1,1 @@
+# This calculates some measures of stratification of the level of stratification of 
