@@ -14,15 +14,15 @@ NPQ_X12 = function(depth, fluor, mld){
   df = data.frame(depth, fluor)
   df = df[complete.cases(df),]
   # identify maximum f in upper MLD
-  NPQ_depth = df$depth[which.max(df$fluor[df$depth < 0.9*mld])]
+  NPQ_depth = df$depth[which.max(df$fluor[df$depth < mld])]
   corr_fluor = fluor 
   if(length(which(depth <= NPQ_depth)) < 1){corr_fluor = fluor
   NPQ_depth = 0}else{
     fluor_NPQ = max(fluor[depth <= NPQ_depth], na.rm = T)
     corr_fluor[depth <= NPQ_depth] = fluor_NPQ # correct above NPQ_depth
   }
-  if(is.empty(NPQ_depth)){NPQ_depth = NA}
-  if(!is.na(NPQ_depth)){if(NPQ_depth == min(df$depth)){NPQ_depth = NA}}
+  if(is.empty(NPQ_depth)){NPQ_depth = 0}
+  if(!is.na(NPQ_depth)){if(NPQ_depth == min(df$depth)){NPQ_depth = 0}}
   return(list("NPQdepth" = NPQ_depth, "corr_fluor" = corr_fluor))
 }
 

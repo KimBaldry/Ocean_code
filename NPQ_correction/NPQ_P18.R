@@ -27,8 +27,8 @@ NPQ_P18 <- function(depth, fluor, mld){
   fluor_zp18 = max(fluor[depth <= NPQ_depth], na.rm = T)
   corr_fluor[depth <= NPQ_depth] = fluor_zp18 # correct above NPQ_depth
   }
-  if(is.empty(NPQ_depth)){NPQ_depth = NA}
-  if(!is.na(NPQ_depth)){if(NPQ_depth == min(df$depth)){NPQ_depth = NA}}
+  if(is.empty(NPQ_depth)){NPQ_depth = 0}
+  if(!is.na(NPQ_depth)){if(NPQ_depth == min(df$depth)){NPQ_depth = 0}}
   return(list("NPQdepth" = NPQ_depth, "corr_fluor" = corr_fluor))
 
 }

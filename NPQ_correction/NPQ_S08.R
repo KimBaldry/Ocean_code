@@ -18,10 +18,10 @@ NPQ_S08  <- function(depth, fluor, bbp,mld){
   df = data.frame(depth, fluor, bbp)
   df = df[complete.cases(df),]
   r = df$fluor/df$bbp # ratio used by Sackmann et al. (2008)
-  max_r = max(r[df$depth < mld], na.rm = T) # identify maximum r in upper MLD
+  max_r = max(r[df$depth < min(mld,df$depth[which.max(df$fluor)], na.rm = T) ], na.rm = T) # identify maximum r in upper MLD
   NPQ_depth = df$depth[which(r == max_r)[1]]
   corr_fluor = fluor 
-  if(length(which(depth <= NPQ_depth)) < 1){corr_fluor = fluor
+  if(length(which(df$depth <= NPQ_depth)) < 1){corr_fluor = fluor
   NPQ_depth = 0}else{
     fluor_NPQ = max_r*(bbp[depth <= NPQ_depth])
     corr_fluor[depth <= NPQ_depth] = fluor_NPQ # correct above NPQ_depth

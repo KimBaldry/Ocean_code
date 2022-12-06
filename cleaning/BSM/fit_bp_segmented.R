@@ -12,7 +12,7 @@ fit_bp_segmented = function(depth, fluor, CD_thresh = 0){
   sp = 1
   fluor.in = fluor
   depth.in = depth
-  na.idx = !is.na(fluor.in) & !is.na(depth.in)
+  na.idx = is.finite(fluor.in) & is.finite(depth.in)
   fluor = fluor[na.idx]
   depth = depth[na.idx]
   fit_lm = lm(fluor~depth)

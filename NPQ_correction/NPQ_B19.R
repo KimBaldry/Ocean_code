@@ -1,4 +1,4 @@
-NPQ_B19 <- function(depth, fluor, bbp){
+NPQ_B19 <- function(depth, fluor, bbp, emld){
   # This is a new NPQ correction method based off of the maximum angle method for defining MLD
   # The method works by first calculating tan theta of the fluor:bbp profile 
   # then identifying where the double derivative of tan theta is zero to find a maximum rate of change 
@@ -11,20 +11,20 @@ NPQ_B19 <- function(depth, fluor, bbp){
   # 
   
   # calculate eco_mld
-  emld = Eco_MLD(depth,fluor)$EMLD
    df = data.frame(depth, fluor, bbp)
    df = df[order(depth),]
    df = df[complete.cases(depth,fluor,bbp),]
 
    ratio_fb = df$bbp/df$fluor
    max_depth_idx = which.closest(df$depth, emld) + 10
+   if(is.na(emld)){max_depth_idx = nrow(df)}
    av_resolution = mean(df$depth[2:max_depth_idx] - df$depth[1:(max_depth_idx-1)], na.rm = T)
    window = 2*round((20/av_resolution)/2) + 1
    window_half = round((20/av_resolution)/2)   
    if(window < 7){window = 7
    window_half = 3}
    ratio_fb_dir =  diff(ratio_fb[1:length(df$fluor)]) < 0
-   if(max_depth_idx-window < 10){NPQ_depth = NA
+   if(max_depth_idx-window < 10){NPQ_depth = 0
    corr_fluor = fluor}else{
      FLUOR = ratio_fb[1:max_depth_idx]
      DEPTH = df$depth[1:max_depth_idx]
@@ -49,7 +49,7 @@ NPQ_B19 <- function(depth, fluor, bbp){
      corr_fluor = fluor
      if(length(which(ratio_fb_dir[2:max_depth_idx] == T))==0 | length(which(diff(sign(ddtan_theta)) != 0 & tan_theta[3:(length(tan_theta)-3)] > 0 & diff(tan_theta[2:(length(tan_theta)-2)]) < 0)) == 0){
         NPQ_idx = NA
-        NPQ_depth = NA
+        NPQ_depth = 0
      }else{
         NPQ_idx = which(diff(sign(ddtan_theta)) != 0 & tan_theta[3:(length(tan_theta)-3)] > 0 & diff(tan_theta[2:(length(tan_theta)-2)]) < 0)[1]
         NPQ_depth = DEPTH_optic[NPQ_idx+3]
