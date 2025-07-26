@@ -49,6 +49,7 @@ flag = 2}else{
     if(max(dens_prof$density,na.rm = T) < DENS_10 + dens_thresh | length(which(dens_prof$depth >= 10)) < 3){flag = 2
     mld = NA}else{
       mld = approx(x = dens_prof$dens[which(dens_prof$depth >= 10)], y = dens_prof$depth[which(dens_prof$depth >= 10)], xout = DENS_10 + dens_thresh)$y
+      if(is.na(mld)){mld = 10}
       flag = 1}
     }else{flag = 2
   mld = NA}}}
@@ -80,6 +81,7 @@ SS_res <- function(data, par, surf_val, mld) {
 SS_tot <- function(data){
   with(data, sum((y-mean(data$y))^2))
 }
+
 Eco_MLD <- function(depth, fluor){
   depth = depth[order(depth)]
   fluor = fluor[order(depth)]
@@ -89,83 +91,113 @@ Eco_MLD <- function(depth, fluor){
   min_depth_idx = max(which.max(fluor))
   max_depth_idx = length(depth)
   av_resolution = mean(depth[2:max_depth_idx] - depth[1:(max_depth_idx-1)], na.rm = T)
-  window = 2*round((20/av_resolution)/2) + 1
-  window_half = round((20/av_resolution)/2)
-  if(window < 7){window = 7
-  window_half = 3}
+  window = 2*round((5/av_resolution)/2) + 1
+  window_half = round((5/av_resolution)/2)
+  if(window < 5){window = 5
+  window_half = 2}
   if(max_depth_idx-window < 10){Bloom_depth = NA
   QI_bd = NA}else{
-    FLUOR = fluor[1:max_depth_idx]
-    DEPTH = depth[1:max_depth_idx]
-    DEPTH_optic = DEPTH[window_half:(max_depth_idx-window_half)]
-    tan_theta = vector("list",max_depth_idx-(2*window_half))
-    for(sp in window_half:(length(FLUOR)-window_half))
-    {
-      if(sp < window){
-        #if(sd(FLUOR[sp:(sp-window_half)]))
-        m1 = lm(FLUOR[sp:(sp-window_half)]~DEPTH[sp:(sp-window_half)])$coefficients[2]
-        m2 = lm(FLUOR[(sp):(sp+window_half)]~DEPTH[(sp):(sp+window_half)])$coefficients[2]
-        tan_theta[[sp]] = (m2 - m1)/(1+(m2*m1))
-      }else{
-        m1 = lm(FLUOR[sp:(sp-window_half)]~DEPTH[sp:(sp-window_half)])$coefficients[2]
-        m2 = lm(FLUOR[(sp):(sp+window_half)]~DEPTH[(sp):(sp+window_half)])$coefficients[2]
-        
-        tan_theta[[sp+1 - window_half]] = (m2 - m1)/(1+(m2*m1))}
-    }
-    tan_theta = unlist(tan_theta)
-    
-    local_m = localMaxima(tan_theta)
-    sign = diff(FLUOR,lag = 1)[local_m+window_half]
-    local_m = local_m[which(sign < 0)]
-    local_m = local_m[which((local_m+window_half) >= min_depth_idx)]
-    if(length(local_m) == 0){ Bloom_depth = NA
-    QI_bd = NA}else{
-      peak_vals = tan_theta[local_m]
-      bloom_idx = local_m[which.max(peak_vals)[1]]
-      Bloom_depth = DEPTH_optic[bloom_idx]
+  FLUOR = fluor[1:max_depth_idx]
+  DEPTH = depth[1:max_depth_idx]
+  DEPTH_optic = DEPTH[window_half:(max_depth_idx-window_half)]
+  tan_theta = vector("list",max_depth_idx-(2*window_half))
+  for(sp in window_half:(length(FLUOR)-window_half))
+  {
+    if(sp < window){
+      #if(sd(FLUOR[sp:(sp-window_half)]))
+      m1 = lm(FLUOR[sp:(sp-window_half)]~DEPTH[sp:(sp-window_half)])$coefficients[2]
+      m2 = lm(FLUOR[(sp):(sp+window_half)]~DEPTH[(sp):(sp+window_half)])$coefficients[2]
+      tan_theta[[sp]] = (m2 - m1)/(1+(m2*m1))
+    }else{
+      m1 = lm(FLUOR[sp:(sp-window_half)]~DEPTH[sp:(sp-window_half)])$coefficients[2]
+      m2 = lm(FLUOR[(sp):(sp+window_half)]~DEPTH[(sp):(sp+window_half)])$coefficients[2]
       
-      idx_u = which.closest(DEPTH_optic, 1.5*Bloom_depth)
-      if(idx_u > max_depth_idx){idx_u = max_depth_idx}
-      idx_l = 1
-      # if(idx_l < 1){idx_l =1}
-      if(idx_l == bloom_idx){QI_bd = 0}else{
-        QI_bd = 1 - sd(FLUOR[bloom_idx:idx_u]-mean(FLUOR[bloom_idx:idx_u]))/
-          sd(FLUOR[idx_l:idx_u]-mean(FLUOR[idx_l:idx_u]))}
-    }
+    tan_theta[[sp+1 - window_half]] = (m2 - m1)/(1+(m2*m1))}
+  }
+  tan_theta = unlist(tan_theta)
+  
+  local_m = which(is.finite(tan_theta))[localMaxima(tan_theta[is.finite(tan_theta)])]
+  sign = diff(FLUOR,lag = 1)[local_m+window_half]
+  local_m = local_m[which(sign < 0)]
+  local_m = local_m[which((local_m+window_half) >= min_depth_idx)]
+  if(length(local_m) == 0){ Bloom_depth = NA
+  QI_bd = NA}else{
+  peak_vals = tan_theta[local_m]
+  bloom_idx = local_m[which.max(peak_vals)[1]]
+  Bloom_depth = DEPTH_optic[bloom_idx]
+  
+  idx_u = which.closest(DEPTH_optic, 1.5*Bloom_depth)
+  if(idx_u > max_depth_idx){idx_u = max_depth_idx}
+  idx_l = 1
+  # if(idx_l < 1){idx_l =1}
+  if(idx_l == bloom_idx){QI_bd = 0}else{
+  QI_bd = 1 - sd(FLUOR[bloom_idx:idx_u]-mean(FLUOR[bloom_idx:idx_u]))/
+    sd(FLUOR[idx_l:idx_u]-mean(FLUOR[idx_l:idx_u]))}
+  }
   }
   return(list("EMLD" = Bloom_depth, "QI" = QI_bd))
 }
 
 
-
 CHL_50 <- function(pres, fluor){
   pres = pres[order(pres)]
   fluor = fluor[order(pres)]
-  fluor = rm_out(fluor)
+  if(diff(pres)[length(pres)- 1] > 1){
+    fluor = approx(pres, fluor, seq(min(pres, na.rm = T), max(pres, na.rm = T), 0.25))$y
+    pres = seq(min(pres, na.rm = T), max(pres, na.rm = T), 0.25)}else{
+      fluor = rm_out(fluor)}
   val = (range(fluor,na.rm = T)[2]-range(fluor,na.rm = T)[1])/2 + range(fluor,na.rm = T)[1]
-  pres[max(which(fluor > val & pres < 300),na.rm = T)]
+  pres_max = pres[which.max(fluor)]
+  pres[max(which(fluor > val & pres < 300 & pres > pres_max),na.rm = T)]
+  
 }
 
 CHL_20 <- function(pres, fluor){
   pres = pres[order(pres)]
   fluor = fluor[order(pres)]
+  if(diff(pres)[length(pres)- 1] > 1){
+    fluor = approx(pres, fluor, seq(min(pres, na.rm = T), max(pres, na.rm = T), 0.25))$y
+    pres = seq(min(pres, na.rm = T), max(pres, na.rm = T), 0.25)}else{
+  fluor = rm_out(fluor)}
   val = (range(fluor,na.rm = T)[2]-range(fluor,na.rm = T)[1])*0.2 + range(fluor,na.rm = T)[1]
-  pres[max(which(fluor > val & pres < 300),na.rm = T)]
+  pres_max = pres[which.max(fluor)]
+  pres[max(which(fluor > val & pres < 300 & pres > pres_max),na.rm = T)]
 }
 
-Zeu = function(depth,fluor,l = 0.01){
+Zeu = function(depth,fluor,l = 0.01, a = NULL, sPAR = NULL){
   df = data.frame(depth, fluor)
   df = df[complete.cases(df),]
   df$fluor[df$fluor < 0] = 0
+  df = df[order(df$depth,decreasing = F),]
+  df = rbind(data.frame("depth" = 0, "fluor" = df$fluor[1]), df)
   kd = 0.0232+0.074*(df$fluor^0.674)
-  ddiff = df$depth - c(0,df$depth[1:(length(df$fluor)-1)])
-  kddiff = kd - c(0,kd[1:(length(kd)-1)])
-  integral_tmp = ddiff*(kd + kddiff/2) # area under curve using linear approximation
-  integral = cumsum(integral_tmp)
-  tmp = exp(-integral)
-  
-  zeu = approx(tmp,df$depth, l)$y
+  dx <- diff(df$depth)
+  end <- length(kd)
+  my <- (kd[1:(end - 1)] + kd[2:end]) / 2
+  integral = cumsum(dx *my)
+  tmp = exp(-integral)  
+  tmp = c(1,tmp)
+  if(is.null(a)){zeu = approx(tmp,df$depth, l)$y
   if(is.na(zeu)){zeu = min(df$depth)}
+  }else{zeu = ifelse(sPAR > a, approx(x = tmp*sPAR, y = df$depth, a)$y, 0)}
+  zeu
+}
+
+MLD_light= function(depth,fluor,MLD,sPAR){
+  df = data.frame(depth, fluor)
+  df = df[complete.cases(df),]
+  df$fluor[df$fluor < 0] = 0
+  df = df[order(df$depth,decreasing = F),]
+  df = rbind(data.frame("depth" = 0, "fluor" = df$fluor[1]), df)
+  kd = 0.0232+0.074*(df$fluor^0.674)
+  dx <- diff(df$depth)
+  end <- length(kd)
+  my <- (kd[1:(end - 1)] + kd[2:end]) / 2
+  integral = cumsum(dx *my)
+  tmp = exp(-integral)  
+  tmp = c(1,tmp)
+  
+  zeu = approx(df$depth, tmp*sPAR,MLD,rule = 2)$y
   zeu
   
 }
@@ -257,4 +289,41 @@ complex_fluor = function(depth, fluor, emld){
     r = FALSE
   }}else{r = FALSE}
   r
+}
+
+
+TLD = function(MLD, DENS, DEPTH){
+  DEPTH_bins = seq(0, max(DEPTH,na.rm = T), by=2)
+  DENS_bins = tapply(DENS, cut(DEPTH, DEPTH_bins), function(x){median(x, na.rm = T)})
+  # readjust bin values to middle
+  DEPTH_bins = seq(0, max(DEPTH,na.rm = T), by=2)[1:length(DEPTH_bins)-1] + 1
+  # interpolate NA's
+  if(length(which(is.na(DENS_bins)==T))){
+    
+    DENS_bins[which(is.na(DENS_bins))] = approx(y = DENS_bins, x = DEPTH_bins, xout = DEPTH_bins[which(is.na(DENS_bins))])$y}
+  
+  interp_DEPTH_DENS = approx(x = DEPTH_bins, y = DENS_bins, xout = seq(1,max(DEPTH_bins),0.5))
+  QIT =function(l,m,u){
+    l = l + (0.5- (l %% 0.5))
+    m = m + (0.5- (m %% 0.5))
+    idx1 = which(interp_DEPTH_DENS$x %in% seq(m,u,0.5))
+    idx2 = which(interp_DEPTH_DENS$x %in% seq(l,u,0.5))
+    1 - ( (sd(interp_DEPTH_DENS$y[idx1] - mean(interp_DEPTH_DENS$y[idx1], na.rm = T), na.rm = T)) / (sd(interp_DEPTH_DENS$y[idx2] - mean(interp_DEPTH_DENS$y[idx2], na.rm = T), na.rm = T)))
+    }
+  
+  
+  if(MLD + (0.5- (MLD %% 0.5))+2 > max(interp_DEPTH_DENS$x)){tld = MLD}else{
+    for(dp in seq(MLD + (0.5- (MLD %% 0.5))+2, max(interp_DEPTH_DENS$x,na.rm = T),0.5)){
+      if(dp + 20 > max(interp_DEPTH_DENS$x)){
+        tld = MLD
+        break}
+      QI_TLD = QIT(MLD,dp,dp + 20)
+      if(is.nan(QI_TLD)){next}
+      if(QI_TLD > 0.5){tld = dp
+      break}
+  
+      
+    }
+  }
+  tld
 }
