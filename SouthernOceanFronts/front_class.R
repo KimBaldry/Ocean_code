@@ -4,57 +4,48 @@ front_class_insitu = function(press_prof, temp_prof, sal_prof,lat,lon){
   colnames(prof_array) = c("press","temp", "temp2", "sal")
   if(max(press_prof,na.rm = T) < 500){return("max press < 500 dbar")}else{
     
-    # calculate the maximum and minimum temperatures in the profile
     t_min  = min(prof_array$temp, na.rm = T)
     t_max = max(prof_array$temp, na.rm = T)
     
-    # get a 20 m window around 400
     ub_plb = 390;
     ub_pub = 410;
     
     ## AZ
-    # Tmin based on PF-S criterion
+    # Tmin 
     t3_ub = 0.98
     
-    # Tmax based on PF-S criterion
+    # Tmax
     t3_ub_max = 2.11
     
-    # Test for the Antarctic Zone (all south of PF-S)
     tmin_az = any(t_min < t3_ub)
     tmax_az = any(t_max < t3_ub_max)
     fun_az = tmin_az == 1 & tmax_az == 1
     isaz = fun_az
     
     ## PFZ
-    # threshold for SAF-S @ 400 m
     pfz_ub = 2.78
     
-    #tmin_pfz = any(t_min > t3_ub)
-    # test for the PFZ. between PF-S and SAF-S
-    tmax_pfz = any(t_max >= t3_ub_max)
-    tmin_pfz = any(t_min >= t3_ub)
+    tmin_pfz = any(t_min > t3_ub)
+    tmax_pfz = any(t_max > t3_ub_max)
     t_400  = any(prof_array$temp < pfz_ub & (prof_array$press >= ub_plb & prof_array$press <= ub_pub))
-    fun_pfz = tmax_pfz == 1 & t_400 == 1 & tmin_pfz == 1 
+    fun_pfz = tmax_pfz == 1 & t_400 == 1
     
     ispfz = fun_pfz
     
     ## SAFZ
-    # thresholds for between the SAF-S and SAF-N
     saf_ub = 6.06
     saf_lb = 2.78
     
-    fun_safz_ub  = any(prof_array$temp >= saf_lb & prof_array$temp < saf_ub & (prof_array$press >= ub_plb & prof_array$press <= ub_pub))
+    fun_safz_ub  = any(prof_array$temp > saf_lb & prof_array$temp < saf_ub & (prof_array$press >= ub_plb & prof_array$press <= ub_pub))
     issafz = fun_safz_ub
     
     ## STZ/SAZ
-    stz_lb = 6.06; # temp criteria for SAF-N
-    # use a 35 salinity at 100 m for the STZ
-    stz_ub_plb = 70; 
+    stz_lb = 6.06;
+    stz_ub_plb = 70;
     stz_ub_pub = 130;
     
-    #SAZ
     fun_saz_ub  = any(prof_array$temp > stz_lb & (prof_array$press >= ub_plb & prof_array$press <= ub_pub))
-    #STZ
+    
     fun_stz_ub  = any(prof_array$temp2 > 11 & prof_array$sal >35 & (prof_array$press >= stz_ub_plb & prof_array$press <= stz_ub_pub))
     isstz = fun_stz_ub ==1 & fun_saz_ub == 1
     issaz = fun_stz_ub == 0 & fun_saz_ub == 1
