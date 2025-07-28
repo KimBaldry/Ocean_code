@@ -13,7 +13,7 @@ front_class_sorarc = function(press_prof, temp_prof, sal_prof){
   stz_s_lb = 35.05;
   
   # P-S conditions
-  fun_stz_sp = prof_array$press <= stz_p & prof_array$temp >= stz_s_lb
+  fun_stz_sp = prof_array$press <= stz_p & prof_array$sal >= stz_s_lb
   # P-T conditions
   fun_stz_tp =prof_array$press <= stz_p & prof_array$temp >= stz_t_lb
   # both conditions
